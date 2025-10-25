@@ -1,0 +1,746 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Painel — FOV centralizado (Exibir FOV desativado) + Configurações (simuladas)</title>
+
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    :root{
+      --red: #dc2020;
+      --red-deep: #b91313;
+      --panel-bg: rgba(8,8,10,0.98);
+      --control-bg: rgba(28,28,30,0.96);
+      --muted: #9b9b9b;
+      --white: #eaeaea;
+      --blue: #36b5ff;
+    }
+
+    html,body{
+      height:100%;
+      margin:0;
+      background:#030307;
+      font-family:"Montserrat",system-ui,Arial;
+      color:var(--white);
+      -webkit-font-smoothing:antialiased;
+      -moz-osx-font-smoothing:grayscale;
+    }
+
+    /* background particles canvas (full-screen, behind) */
+    #particles {
+      position:fixed; inset:0; width:100%; height:100%; z-index:0;
+      background: radial-gradient( circle at 30% 20%, rgba(10,18,30,0.12), transparent 10% ),
+                  linear-gradient(180deg,#05060a 0%, #020204 100%);
+    }
+
+    .wrap{position:relative;z-index:2;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;}
+
+    /* painel */
+    .panel {
+      width:540px;
+      max-width:95%;
+      height:480px; /* altura um pouco maior para comportar a aba de códigos */
+      border-radius:12px;
+      overflow:visible;
+      background: linear-gradient(180deg, rgba(12,12,14,0.98), rgba(6,6,8,0.95));
+      box-shadow: 0 18px 60px rgba(0,0,0,0.75), inset 0 1px 0 rgba(255,255,255,0.02);
+      border: 1px solid rgba(255,255,255,0.03);
+      position:relative;
+      backdrop-filter: blur(4px);
+      padding-bottom:18px;
+      box-sizing:border-box;
+    }
+
+    .topbar{
+      height:40px;
+      display:flex;
+      align-items:center;
+      padding:0 10px;
+      gap:8px;
+      background: linear-gradient(90deg,var(--red), var(--red-deep) 65%);
+      border-top-left-radius:12px;
+      border-top-right-radius:12px;
+    }
+    .title{font-weight:700;font-size:13px;flex:1;text-align:center;letter-spacing:0.8px;color:#fff}
+    .close{font-size:16px;cursor:pointer;padding:4px 6px;opacity:0.95}
+    .red-line{height:3px;background:linear-gradient(90deg,var(--red),var(--red-deep));}
+
+    .body{display:flex;gap:12px;padding:12px;position:relative;height: calc(100% - 64px);box-sizing:border-box;}
+
+    .sidebar{width:46px;display:flex;flex-direction:column;gap:10px;padding-top:4px}
+    .side-btn{background:var(--red);width:46px;height:46px;border-radius:8px;display:flex;align-items:center;justify-content:center;border:none;box-shadow: inset 0 -3px 0 rgba(0,0,0,0.25);cursor:pointer;transition:transform .06s}
+    .side-btn svg{fill:#fff;width:18px;height:18px;opacity:0.98}
+    .side-btn:active{transform:translateY(1px)}
+
+    .content{flex:1;padding-right:6px;position:relative;min-height:200px}
+    .row{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+    .label{font-size:15px;color:var(--white)}
+    .big{font-size:17px;font-weight:600}
+
+    .checkbox{width:24px;height:24px;border-radius:6px;background:#1f1f1f;border:1px solid rgba(255,255,255,0.03);display:flex;align-items:center;justify-content:center;cursor:pointer;transition:transform .06s}
+    .checkbox.checked{background:var(--red);box-shadow:0 0 0 6px rgba(54,181,255,0.03)}
+    .checkbox svg{width:14px;height:14px;fill:#fff}
+
+    .number-pill{width:110px;text-align:center;font-size:14px;background:var(--control-bg);padding:8px;border-radius:8px;display:inline-block;color:var(--white)}
+    .number-input{width:82px;background:transparent;border:0;color:var(--white);font-size:14px;text-align:center;outline:none}
+    .range{width:160px;vertical-align:middle}
+
+    .select-pill{display:inline-flex;align-items:center;gap:8px;padding:8px 10px;border-radius:8px;background:var(--control-bg);min-width:140px;cursor:pointer;font-size:14px;position:relative}
+    .select-arrow{width:28px;height:28px;border-radius:6px;background:var(--red);display:flex;align-items:center;justify-content:center}
+    .select-arrow svg{width:12px;height:12px;fill:#fff}
+
+    .select-list { position:absolute; top:calc(100% + 8px); left:0; min-width:160px; background:linear-gradient(180deg, rgba(18,18,20,0.98), rgba(12,12,14,0.98)); border-radius:8px; box-shadow:0 10px 24px rgba(0,0,0,0.6); padding:6px; border:1px solid rgba(255,255,255,0.03); z-index:20; display:none; flex-direction:column; gap:6px; }
+    .select-list.show { display:flex; }
+    .select-item { padding:8px 10px; border-radius:6px; color:var(--white); cursor:pointer; font-size:14px; }
+    .select-item:hover { background:rgba(255,255,255,0.03); }
+    .select-item.selected { background: rgba(54,181,255,0.08); color: #dff7ff; }
+
+    .square{width:22px;height:22px;border-radius:6px;background:var(--red);box-shadow: inset 0 -3px 0 rgba(0,0,0,0.25)}
+
+    .section-title{font-size:14px;color:var(--white);margin:4px 0 6px}
+    .radios{display:flex;gap:12px;align-items:center;margin-top:6px}
+    .radio{display:flex;align-items:center;gap:8px;cursor:pointer;font-size:14px}
+    .radio .circ{width:22px;height:22px;border-radius:50%;background:#2a2a2a;display:flex;align-items:center;justify-content:center}
+    .radio .circ.active{background:var(--red);box-shadow:0 0 0 6px rgba(54,181,255,0.04)}
+    .radio .dot{width:10px;height:10px;border-radius:50%;background:#fff}
+
+    .muted{color:var(--muted);font-size:13px}
+    .spacer{flex:1}
+    .disabled { opacity:0.42; pointer-events:none; filter:grayscale(0.12); }
+
+    /* FOV canvas centered exactly in panel (horizontal + vertical center) */
+    .fov-canvas {
+      position:absolute;
+      left:50%;
+      top:50%;
+      transform:translate(-50%,-50%); /* center both axes */
+      width:240px;
+      height:240px;
+      pointer-events:none;
+      z-index:6;
+      border-radius:999px;
+      overflow:visible;
+      mix-blend-mode:screen;
+      opacity:0; /* hidden by default: Exibir FOV starts disabled */
+      transition:opacity .22s ease;
+    }
+
+    .fov-wrap {
+      position:absolute;
+      left:50%;
+      top:50%;
+      transform:translate(-50%,-50%);
+      width:240px;
+      height:240px;
+      border-radius:999px;
+      pointer-events:none;
+      z-index:4;
+      display:flex;align-items:center;justify-content:center;
+      background: linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0.005));
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.02);
+      border:1px solid rgba(255,255,255,0.02);
+      opacity:0; /* hidden by default */
+      transition:opacity .22s ease;
+    }
+
+    .fov-label {
+      position:absolute;
+      left:50%;
+      top: calc(50% + 140px); /* just below the circle */
+      transform:translateX(-50%);
+      font-size:12px;
+      color:var(--muted);
+      z-index:7;
+      pointer-events:none;
+      background:rgba(0,0,0,0.28);
+      padding:4px 8px;
+      border-radius:6px;
+      border:1px solid rgba(255,255,255,0.02);
+      backdrop-filter: blur(2px);
+      opacity:0.6;
+    }
+
+    /* Códigos tab */
+    .codes-tab { position:absolute; right:12px; top:12px; z-index:30; display:flex; gap:8px; }
+    .tab-btn { background:rgba(255,255,255,0.03); padding:6px 10px; border-radius:8px; cursor:pointer; font-size:13px; color:var(--white); border:1px solid rgba(255,255,255,0.02); }
+    .tab-btn.active { background:linear-gradient(90deg,var(--blue), #2aa6ff); color:#012; font-weight:700; }
+
+    .codes-panel { position:absolute; left:12px; right:12px; bottom:12px; height:150px; border-radius:8px; background:linear-gradient(180deg, rgba(12,12,14,0.96), rgba(6,6,8,0.96)); padding:10px; box-shadow:0 10px 30px rgba(0,0,0,0.6); border:1px solid rgba(255,255,255,0.03); overflow:auto; display:none; z-index:25; }
+    .codes-panel.show { display:block; }
+    .code-block { background:#0f1113; padding:8px; border-radius:8px; border:1px solid rgba(255,255,255,0.02); margin-bottom:8px; position:relative; }
+    .code-title { font-size:13px; margin-bottom:6px; color:var(--muted); display:flex; align-items:center; justify-content:space-between; gap:8px; }
+    .code-pre { white-space:pre-wrap; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, "Roboto Mono", monospace; font-size:12px; color:#dff7ff; max-height:86px; overflow:auto; padding-right:44px; }
+    .copy-btn { position:absolute; right:10px; top:10px; background:var(--red); border:0; color:#fff; padding:6px 8px; border-radius:6px; cursor:pointer; font-size:12px; }
+    .copy-btn:active { transform:translateY(1px); }
+
+    @media (max-width:640px){
+      .panel{width:92%; height:640px}
+      .sidebar{display:none}
+      .fov-wrap, .fov-canvas { width:160px; height:160px; }
+      .fov-label { top: calc(50% + 100px); }
+      .select-list { left:auto; right:0; }
+    }
+
+    /* small UX touches */
+    input[type="range"]::-webkit-slider-runnable-track { height:6px; background:linear-gradient(90deg,#444, #222); border-radius:6px; }
+    input[type="range"]::-webkit-slider-thumb { -webkit-appearance:none; width:14px;height:14px;border-radius:50%; background:var(--blue);box-shadow:0 2px 6px rgba(0,0,0,0.6); margin-top:-4px; }
+    input[type="number"]::-webkit-outer-spin-button, input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+  </style>
+</head>
+<body>
+  <canvas id="particles" aria-hidden="true"></canvas>
+
+  <div class="wrap">
+    <div class="panel" role="dialog" aria-label="Painel compacto">
+      <div class="topbar" aria-hidden="false">
+        <div style="display:flex;align-items:center;gap:8px;width:100%;">
+          <div style="width:0;height:0;border-left:10px solid transparent;border-right:10px solid transparent;border-top:12px solid rgba(255,255,255,0.9);transform:translateY(6px)"></div>
+          <div class="title">FFH4X ANDROID • @LUXECHEATS</div>
+          <div class="close" title="Fechar">✕</div>
+        </div>
+      </div>
+
+      <div class="red-line" aria-hidden="true"></div>
+
+      <div class="body">
+        <div class="sidebar" role="navigation" aria-label="menu lateral">
+          <button class="side-btn" title="Config 1" aria-pressed="true">
+            <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true"><path d="M12 8.6A3.4 3.4 0 1 0 12 15.4 3.4 3.4 0 0 0 12 8.6zM19.14 12.94a7.95 7.95 0 0 0 0-1.87l2.03-1.57-1.92-3.33-2.39.96a8.06 8.06 0 0 0-1.61-.94l-.36-2.53H9.8l-.36 2.53c-.55.22-1.06.48-1.56.8l-2.39-.96L3.6 9.7l2.03 1.57c-.07.33-.12.67-.12 1s.05.67.12 1L3.6 13.9l2.39.96c.5.32 1.01.58 1.56.8l.36 2.53h4.4l.36-2.53c.55-.22 1.06-.48 1.56-.8l2.39-.96 1.92-3.33z"/></svg>
+          </button>
+          <button class="side-btn" title="Visual" aria-pressed="false">
+            <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true"><path d="M12 6.5c4.58 0 8.63 2.72 10.42 6.5-1.79 3.79-5.84 6.5-10.42 6.5S3.37 16.79 1.58 13.01C3.37 9.23 7.42 6.5 12 6.5zM12 12a3.5 3.5 0 1 0 .001 7.001A3.5 3.5 0 0 0 12 12z"/></svg>
+          </button>
+          <button class="side-btn" title="Aimbot" aria-pressed="false">
+            <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true"><path d="M12 15.5A3.5 3.5 0 1 1 12 8.5a3.5 3.5 0 0 1 0 7z"/></svg>
+          </button>
+          <button class="side-btn" title="Perfil" aria-pressed="false">
+            <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true"><path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM3 20v-1c0-2.5 4-5 9-5s9 2.5 9 5v1z"/></svg>
+          </button>
+        </div>
+
+        <div class="content" role="main">
+          <div class="row" style="align-items:center">
+            <div class="checkbox" id="cb-aimbot" title="Ativar Aimbot" role="checkbox" aria-checked="false" aria-label="Ativar Aimbot"></div>
+            <div class="label big">Ativar Aimbot</div>
+            <div class="spacer"></div>
+
+            <!-- Exibir FOV DESATIVADO por padrão -->
+            <div class="checkbox" id="cb-fov" title="Exibir FOV" role="checkbox" aria-checked="false" aria-label="Exibir FOV">
+              <!-- sem ícone pois está desativado -->
+            </div>
+            <div class="label muted" style="margin-left:6px">Exibir FOV</div>
+          </div>
+
+          <div class="row" style="justify-content:space-between;padding-top:4px;align-items:center">
+            <div style="display:flex;align-items:center;gap:8px" id="fovControls">
+              <div class="number-pill" aria-label="valor fov">
+                <input id="fov-number" class="number-input" type="number" step="0.1" min="50.5" max="360" value="50.5" />
+                <span style="font-size:12px;color:var(--muted);margin-left:6px">°</span>
+              </div>
+
+              <input id="fov-range" class="range" type="range" min="50.5" max="360" step="0.1" value="50.5" />
+            </div>
+
+            <div style="display:flex;gap:8px;align-items:center">
+              <div class="square" title="Regular FOV" aria-hidden="true"></div>
+              <div class="label">Regular FOV</div>
+            </div>
+          </div>
+
+          <div class="row" style="align-items:center;padding-top:4px">
+            <div class="select-pill aimbot-related" id="select-target" aria-haspopup="listbox" aria-expanded="false" tabindex="0" role="button" aria-label="Selecionar alvo">
+              <div id="select-target-label" style="font-size:14px">Cabeça</div>
+              <div class="spacer"></div>
+              <div class="select-arrow" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path d="M7 10l5 5 5-5z"/></svg>
+              </div>
+
+              <div class="select-list" id="selectList" role="listbox" aria-label="Alvos">
+                <div class="select-item selected" role="option" data-value="cabeça">Cabeça</div>
+                <div class="select-item" role="option" data-value="pescoco">Pescoço</div>
+                <div class="select-item" role="option" data-value="quadril">Quadril</div>
+              </div>
+            </div>
+
+            <div style="width:8px"></div>
+
+            <div class="select-pill aimbot-related" style="min-width:100px;justify-content:center;gap:6px">
+              <div style="font-size:13px">Puxada</div>
+              <div class="select-arrow" style="width:30px;height:30px;"><svg viewBox="0 0 24 24"><path d="M7 10l5 5 5-5z"/></svg></div>
+            </div>
+          </div>
+
+          <div class="section-title">Tipo de Aimbot:</div>
+
+          <div class="radios aimbot-related" role="radiogroup" aria-label="Tipo de Aimbot">
+            <label class="radio" data-value="shoot">
+              <div class="circ active"><div class="dot"></div></div>
+              <div style="font-size:14px">Ao Atirar</div>
+            </label>
+
+            <label class="radio" data-value="look">
+              <div class="circ"><div style="display:none"></div></div>
+              <div style="font-size:14px;color:var(--muted)">Ao Olhar</div>
+            </label>
+          </div>
+
+          <!-- Central FOV UI (inicialmente invisível) -->
+          <div class="fov-label" id="fovLabel">FOV: <span id="fovLabelValue">50.5°</span></div>
+          <div class="fov-wrap" id="fovWrap" title="Visualização do FOV (aparece ao ativar Exibir FOV)"></div>
+          <canvas class="fov-canvas" id="fovCanvas" width="240" height="240" aria-hidden="true"></canvas>
+
+          <!-- Códigos UI (aba) -->
+          <div class="codes-tab" aria-hidden="false">
+            <button class="tab-btn" id="btnCodes">Códigos</button>
+          </div>
+
+          <div class="codes-panel" id="codesPanel" aria-live="polite" aria-atomic="true">
+            <!-- conteúdo gerado via JS -->
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    /* Partículas de fundo (leve) */
+    (function(){
+      const canvas = document.getElementById('particles');
+      const ctx = canvas.getContext('2d');
+      let w = canvas.width = innerWidth;
+      let h = canvas.height = innerHeight;
+      const colors = ['#1fb6ff','#36b5ff','#5fd3ff'];
+      const PARTICLE_COUNT = Math.max(20, Math.floor((w*h)/120000));
+      const particles = [];
+      function rand(min,max){ return Math.random()*(max-min)+min; }
+      for(let i=0;i<PARTICLE_COUNT;i++){
+        particles.push({ x: rand(0,w), y: rand(0,h), vx: rand(-0.2,0.2), vy: rand(-0.12,0.12), r: rand(0.8,2.0), c: colors[Math.floor(Math.random()*colors.length)] });
+      }
+      addEventListener('resize', ()=>{ w=canvas.width=innerWidth; h=canvas.height=innerHeight; });
+      function frame(){
+        ctx.clearRect(0,0,w,h);
+        for(const p of particles){
+          p.x += p.vx; p.y += p.vy;
+          if(p.x < -10) p.x = w + 10;
+          if(p.x > w + 10) p.x = -10;
+          if(p.y < -10) p.y = h + 10;
+          if(p.y > h + 10) p.y = -10;
+          ctx.beginPath();
+          const g = ctx.createRadialGradient(p.x,p.y,0,p.x,p.y,p.r*6);
+          g.addColorStop(0, p.c);
+          g.addColorStop(0.25, p.c + '55');
+          g.addColorStop(1, 'rgba(0,0,0,0)');
+          ctx.fillStyle = g;
+          ctx.arc(p.x,p.y,p.r*5,0,Math.PI*2);
+          ctx.fill();
+          ctx.beginPath();
+          ctx.fillStyle = p.c;
+          ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
+          ctx.fill();
+        }
+        requestAnimationFrame(frame);
+      }
+      frame();
+    })();
+
+    /* Painel: comportamento e desenho FOV central */
+    (function(){
+      const cbAimbot = document.getElementById('cb-aimbot');
+      const cbFov = document.getElementById('cb-fov');
+      const fovNum = document.getElementById('fov-number');
+      const fovRange = document.getElementById('fov-range');
+      const fovCanvas = document.getElementById('fovCanvas');
+      const fovLabelValue = document.getElementById('fovLabelValue');
+      const fovWrap = document.getElementById('fovWrap');
+      const aimbotRelated = document.querySelectorAll('.aimbot-related');
+
+      const selectTarget = document.getElementById('select-target');
+      const selectLabel = document.getElementById('select-target-label');
+      const selectList = document.getElementById('selectList');
+      const selectItems = Array.from(selectList.querySelectorAll('.select-item'));
+
+      // Garantir estado inicial: Aimbot desligado, Exibir FOV DESATIVADO
+      cbAimbot.classList.remove('checked');
+      cbAimbot.setAttribute('aria-checked','false');
+
+      cbFov.classList.remove('checked'); // EXIBIR FOV DESATIVADO
+      cbFov.setAttribute('aria-checked','false');
+
+      // FOV inicial e sincronização
+      fovNum.value = 50.5;
+      fovRange.value = 50.5;
+      fovLabelValue.textContent = parseFloat(fovNum.value).toFixed(1) + '°';
+
+      function clampFov(v){
+        const min = parseFloat(fovNum.min) || 50.5;
+        const max = parseFloat(fovNum.max) || 360;
+        v = parseFloat(v);
+        if(isNaN(v)) v = min;
+        if(v < min) v = min;
+        if(v > max) v = max;
+        return parseFloat(v.toFixed(1));
+      }
+
+      fovNum.addEventListener('input', e=>{
+        const v = clampFov(e.target.value);
+        fovNum.value = v;
+        fovRange.value = v;
+        fovLabelValue.textContent = v + '°';
+      });
+      fovNum.addEventListener('change', e=>{
+        const v = clampFov(e.target.value);
+        fovNum.value = v;
+        fovRange.value = v;
+        fovLabelValue.textContent = v + '°';
+      });
+      fovRange.addEventListener('input', e=>{
+        const v = clampFov(e.target.value);
+        fovNum.value = v;
+        fovLabelValue.textContent = v + '°';
+      });
+
+      // Desativa controles relacionados ao aimbot quando ele estiver desligado
+      function updateAimbotState(){
+        const enabled = cbAimbot.classList.contains('checked');
+        aimbotRelated.forEach(el=>{
+          if(!enabled) el.classList.add('disabled');
+          else el.classList.remove('disabled');
+        });
+      }
+      updateAimbotState();
+
+      document.addEventListener('click', function(e){
+        // toggle aimbot
+        if(e.target.closest('#cb-aimbot')){
+          cbAimbot.classList.toggle('checked');
+          const state = cbAimbot.classList.contains('checked');
+          cbAimbot.setAttribute('aria-checked', state ? 'true' : 'false');
+          updateAimbotState();
+        }
+
+        // toggle exibir FOV -> mostra/oculta canvas central
+        if(e.target.closest('#cb-fov')){
+          cbFov.classList.toggle('checked');
+          const state = cbFov.classList.contains('checked');
+          cbFov.setAttribute('aria-checked', state ? 'true' : 'false');
+          // aplicar visibilidade com transição
+          fovCanvas.style.opacity = state ? '1' : '0';
+          fovWrap.style.opacity = state ? '1' : '0';
+          document.getElementById('fovLabel').style.opacity = state ? '1' : '0.4';
+        }
+
+        // select dropdown open/close
+        if(e.target.closest('#select-target')){
+          const isDisabled = selectTarget.classList.contains('disabled');
+          if(isDisabled) return;
+          const show = selectList.classList.contains('show');
+          if(show){
+            selectList.classList.remove('show');
+            selectTarget.setAttribute('aria-expanded','false');
+          } else {
+            selectList.classList.add('show');
+            selectTarget.setAttribute('aria-expanded','true');
+          }
+        } else {
+          if(selectList.classList.contains('show')){
+            selectList.classList.remove('show');
+            selectTarget.setAttribute('aria-expanded','false');
+          }
+        }
+
+        // escolher item do select
+        const it = e.target.closest('.select-item');
+        if(it){
+          selectItems.forEach(si=>si.classList.remove('selected'));
+          it.classList.add('selected');
+          const labelText = it.textContent.trim();
+          selectLabel.textContent = labelText;
+          selectList.classList.remove('show');
+          selectTarget.setAttribute('aria-expanded','false');
+        }
+
+        // radios
+        if(e.target.closest('.radio')){
+          const r = e.target.closest('.radio');
+          document.querySelectorAll('.radios .circ').forEach(c=>c.classList.remove('active'));
+          const circ = r.querySelector('.circ');
+          if(circ) circ.classList.add('active');
+          document.querySelectorAll('.radios > label').forEach(lbl=>{
+            const txt = lbl.querySelector('div:nth-child(2)');
+            if(!txt) return;
+            if(lbl.querySelector('.circ') && lbl.querySelector('.circ').classList.contains('active')){
+              txt.style.color = 'var(--white)';
+            } else txt.style.color = 'var(--muted)';
+          });
+        }
+      });
+
+      // keyboard accessibility
+      selectTarget.addEventListener('keydown', (ev) => {
+        if(selectTarget.classList.contains('disabled')) return;
+        if(ev.key === 'Enter' || ev.key === ' '){
+          ev.preventDefault();
+          const show = selectList.classList.contains('show');
+          if(show){
+            selectList.classList.remove('show');
+            selectTarget.setAttribute('aria-expanded','false');
+          } else {
+            selectList.classList.add('show');
+            selectTarget.setAttribute('aria-expanded','true');
+            selectItems[0].focus();
+          }
+        }
+      });
+
+      // Canvas central: desenho do anel e da "boxinha"
+      const ctx = fovCanvas.getContext('2d');
+      let cw = fovCanvas.width, ch = fovCanvas.height;
+      function resizeCanvas(){
+        const dpr = window.devicePixelRatio || 1;
+        cw = Math.floor(fovCanvas.clientWidth * dpr);
+        ch = Math.floor(fovCanvas.clientHeight * dpr);
+        fovCanvas.width = cw;
+        fovCanvas.height = ch;
+        fovCanvas.style.width = fovCanvas.clientWidth + 'px';
+        fovCanvas.style.height = fovCanvas.clientHeight + 'px';
+        ctx.setTransform(dpr,0,0,dpr,0,0);
+      }
+      addEventListener('resize', resizeCanvas);
+      resizeCanvas();
+
+      let displayedFov = clampFov(fovNum.value);
+
+      function drawFov(){
+        ctx.clearRect(0,0,fovCanvas.width,fovCanvas.height);
+
+        const fov = clampFov(parseFloat(fovNum.value));
+        displayedFov += (fov - displayedFov) * 0.12;
+
+        const minFov = parseFloat(fovNum.min) || 50.5;
+        const maxFov = parseFloat(fovNum.max) || 360;
+
+        const vw = fovCanvas.clientWidth;
+        const vh = fovCanvas.clientHeight;
+        const maxRad = Math.min(vw, vh) / 2 - 12;
+        const minRad = 14;
+        const t = (displayedFov - minFov) / (maxFov - minFov);
+        const radius = minRad + Math.max(0, Math.min(1, t)) * (maxRad - minRad);
+
+        const cx = vw / 2;
+        const cy = vh / 2;
+
+        // glow
+        const grd = ctx.createRadialGradient(cx, cy, radius*0.4, cx, cy, radius*2.8);
+        grd.addColorStop(0, 'rgba(54,181,255,0.22)');
+        grd.addColorStop(0.5, 'rgba(54,181,255,0.10)');
+        grd.addColorStop(1, 'rgba(54,181,255,0)');
+        ctx.fillStyle = grd;
+        ctx.beginPath();
+        ctx.arc(cx, cy, radius*2.8, 0, Math.PI*2);
+        ctx.fill();
+
+        // ring
+        ctx.beginPath();
+        ctx.lineWidth = 2.0;
+        ctx.strokeStyle = 'rgba(54,181,255,0.95)';
+        ctx.arc(cx, cy, radius, 0, Math.PI*2);
+        ctx.stroke();
+
+        // center dot
+        ctx.beginPath();
+        ctx.fillStyle = '#aee9ff';
+        ctx.arc(cx, cy, 3.8, 0, Math.PI*2);
+        ctx.fill();
+
+        // ticks
+        ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+        ctx.lineWidth = 1;
+        const tickLen = 6;
+        ctx.beginPath();
+        ctx.moveTo(cx, cy - radius);
+        ctx.lineTo(cx, cy - radius + tickLen);
+        ctx.moveTo(cx + radius, cy);
+        ctx.lineTo(cx + radius - tickLen, cy);
+        ctx.moveTo(cx, cy + radius);
+        ctx.lineTo(cx, cy + radius - tickLen, cy);
+        ctx.moveTo(cx - radius, cy);
+        ctx.lineTo(cx - radius + tickLen, cy);
+        ctx.stroke();
+
+        // boxinha posicionada conforme alvo selecionado
+        const selectedValue = selectList.querySelector('.select-item.selected')?.getAttribute('data-value') || 'cabeça';
+        let angleRad = -Math.PI/2;
+        if(selectedValue === 'cabeça') angleRad = -Math.PI/2;       // topo
+        else if(selectedValue === 'pescoco') angleRad = -Math.PI/4; // top-right
+        else if(selectedValue === 'quadril') angleRad = Math.PI/2;  // baixo
+
+        const bx = cx + Math.cos(angleRad) * radius;
+        const by = cy + Math.sin(angleRad) * radius;
+        const boxSize = 8 + (radius / maxRad) * 6;
+        ctx.save();
+        ctx.translate(bx, by);
+        ctx.rotate(angleRad * 0.12);
+        // shadow
+        ctx.fillStyle = 'rgba(0,0,0,0.35)';
+        ctx.fillRect(-boxSize/2 + 1.5, -boxSize/2 + 2.5, boxSize, boxSize);
+        // main box
+        ctx.fillStyle = '#1d66a8';
+        ctx.fillRect(-boxSize/2, -boxSize/2, boxSize, boxSize);
+        // highlight
+        ctx.fillStyle = '#73d8ff';
+        ctx.fillRect(-boxSize/2 + 2, -boxSize/2 + 2, boxSize - 4, boxSize - 4);
+        ctx.restore();
+
+        fovLabelValue.textContent = displayedFov.toFixed(1) + '°';
+      }
+
+      // main loop: draws only if Exibir FOV estiver ativo
+      (function loop(){
+        const show = cbFov.classList.contains('checked');
+        // ensure elements hidden by default and revealed when checked
+        fovCanvas.style.opacity = show ? '1' : '0';
+        fovWrap.style.opacity = show ? '1' : '0';
+        document.getElementById('fovLabel').style.opacity = show ? '1' : '0.4';
+        if(show) drawFov();
+        else ctx.clearRect(0,0,fovCanvas.width,fovCanvas.height);
+        requestAnimationFrame(loop);
+      })();
+
+      // accessibility: ESC closes select
+      document.addEventListener('keydown', (ev) => {
+        if(ev.key === 'Escape' && selectList.classList.contains('show')){
+          selectList.classList.remove('show');
+          selectTarget.setAttribute('aria-expanded','false');
+        }
+      });
+
+      // prevent accidental selection during interaction
+      document.querySelectorAll('.side-btn, .checkbox, .radio, .select-pill, #fov-range, #fov-number').forEach(el=>{
+        el.addEventListener('mousedown', e=>e.preventDefault());
+      });
+    })();
+  </script>
+
+  <!-- ============================
+       Código ADICIONAL: integração segura
+       - Armazena os "códigos" que você forneceu como dados locais
+       - Exibe os códigos em uma aba "Códigos"
+       - NUNCA executa, avalia ou injeta código no contexto do jogo
+       ============================ -->
+  <script>
+    (function(){
+      // Nota de segurança
+      console.warn("PANEL: códigos armazenados apenas como texto para exibição. Nada será executado.");
+
+      // Função utilitária que escapa texto para exibição segura em <pre>
+      function escapeHtml(str){
+        if(typeof str !== 'string') return '';
+        return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+      }
+
+      // ---------- Os blocos que você enviou (exatamente como texto) ----------
+      const rawCodes = {
+        codigo1: `システムを使用する;
+System.Linq を使用します。
+パブリッククラスAntiBan
+{
+    bool bIsBanned = false;
+    パブリック静的 void Main()
+    {
+        アンチバン antiBAN = new AntiBan();
+        antiBAN.CheckIP();
+        もしも0)}`,
+        codigo2: `var target = document.getElementById("Head");
+функция прицеливания() {
+  var xTarget = target.getBoundingClientRect().x;
+  var yTarget = target.getBoundingClientRect().y;
+  var centerX = target.offs0)}`,
+        codigo3: `aimpixel_enabled=true; pixel_aim_assist=true; aim_pixel_accuracy=5; aim_pixel_smoothness=0.3; auto_center_on_pixel=true; pixel_detection_threshold=20; target_pixel_mode=dynamic; aim_on_visible_pixels=true`,
+        codigo4: `sensixit_enabled=true; sensitivity_multiplier=1.8; sensitivity_adjustment_mode=adaptive; max_sensitivity=100; min_sensitivity=10; sensitivity_smoothness=0.4; automatic_sensitivity_adjustment=true`
+      };
+
+      // Guardar em localStorage (apenas para conveniência local)
+      try {
+        localStorage.setItem('panel_user_codes', JSON.stringify(rawCodes));
+      } catch(e){ console.warn("Não foi possível salvar códigos em localStorage:", e); }
+
+      // Funções seguras de API — somente leitura / exibição
+      window.PANEL_SAFE_API = window.PANEL_SAFE_API || {};
+      window.PANEL_SAFE_API.userCodes = rawCodes;
+      window.PANEL_SAFE_API.getUserCodes = function(){ return JSON.parse(JSON.stringify(rawCodes)); };
+
+      // Renderizar códigos na UI (painel "Códigos")
+      const codesPanel = document.getElementById('codesPanel');
+      const btnCodes = document.getElementById('btnCodes');
+      function renderCodes(){
+        codesPanel.innerHTML = '';
+        Object.keys(rawCodes).forEach((k, idx) => {
+          const wrapper = document.createElement('div');
+          wrapper.className = 'code-block';
+          const title = document.createElement('div');
+          title.className = 'code-title';
+          title.innerHTML = `<div><strong>${k}</strong></div><div class="muted">bloco ${idx+1}</div>`;
+          const pre = document.createElement('pre');
+          pre.className = 'code-pre';
+          // safe: inserir texto escapado (não interpretável)
+          pre.innerHTML = escapeHtml(rawCodes[k]);
+
+          const copyBtn = document.createElement('button');
+          copyBtn.className = 'copy-btn';
+          copyBtn.textContent = 'Copiar';
+          copyBtn.title = 'Copiar código para área de transferência';
+          copyBtn.addEventListener('click', () => {
+            // copiar texto puro (não executável)
+            navigator.clipboard && navigator.clipboard.writeText(rawCodes[k]).then(()=>{
+              copyBtn.textContent = 'Copiado';
+              setTimeout(()=> copyBtn.textContent = 'Copiar', 1200);
+            }).catch(()=> {
+              // fallback
+              const ta = document.createElement('textarea');
+              ta.value = rawCodes[k];
+              document.body.appendChild(ta);
+              ta.select();
+              try { document.execCommand('copy'); copyBtn.textContent = 'Copiado'; } catch(e){ alert('Não foi possível copiar.'); }
+              document.body.removeChild(ta);
+              setTimeout(()=> copyBtn.textContent = 'Copiar', 1200);
+            });
+          });
+
+          wrapper.appendChild(title);
+          wrapper.appendChild(pre);
+          wrapper.appendChild(copyBtn);
+          codesPanel.appendChild(wrapper);
+        });
+      }
+
+      // Toggle da aba códigos
+      btnCodes.addEventListener('click', () => {
+        const show = codesPanel.classList.contains('show');
+        if(show){
+          codesPanel.classList.remove('show');
+          btnCodes.classList.remove('active');
+        } else {
+          renderCodes();
+          codesPanel.classList.add('show');
+          btnCodes.classList.add('active');
+        }
+      });
+
+      // Inicial: nada aberto
+      // Fornecer método para atualizar códigos (apenas substituição segura de strings)
+      window.PANEL_SAFE_API.updateUserCode = function(key, newText){
+        if(!rawCodes.hasOwnProperty(key)) return false;
+        rawCodes[key] = String(newText);
+        try { localStorage.setItem('panel_user_codes', JSON.stringify(rawCodes)); } catch(e){}
+        // re-render se painel aberto
+        if(document.getElementById('codesPanel').classList.contains('show')) renderCodes();
+        return true;
+      };
+
+      console.log("PANEL_SAFE_API pronta — códigos carregados como texto. Use window.PANEL_SAFE_API para acessar.");
+    })();
+  </script>
+</body>
+</html>
